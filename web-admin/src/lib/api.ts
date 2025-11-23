@@ -41,6 +41,7 @@ export const appsApi = {
   testFetch: (id: string) =>
     fetchApi<TestFetchResponse>(`/api/admin/apps/${id}/test-fetch`, {
       method: 'POST',
+      body: JSON.stringify({}),
     }),
 };
 
@@ -116,9 +117,10 @@ export interface AppDetail extends App {
 export interface TestFetchResult {
   source_id: string;
   source_name: string;
-  status: 'success' | 'failure';
+  status: 'success' | 'failure' | 'warning' | 'info';
   url?: string;
   error?: string;
+  message?: string;
   checked_at: string;
 }
 
