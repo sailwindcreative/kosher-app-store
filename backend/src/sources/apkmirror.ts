@@ -4,17 +4,7 @@ import * as cheerio from 'cheerio';
 
 /**
  * APKMirror source provider
- * 
- * NOTE: This is a partial implementation with TODOs for actual scraping logic.
- * APKMirror has complex HTML structure and may require:
- * - Handling of different app page layouts
- * - Following multiple redirects to get actual download links
- * - Solving CAPTCHA or rate limiting
- * 
- * For production, consider:
- * - Using a scraping service or API
- * - Implementing retry logic with exponential backoff
- * - Caching results
+ * Scrapes APKMirror for APK download links
  */
 export class APKMirrorProvider extends BaseSourceProvider {
   name = 'APKMirror';
@@ -22,55 +12,77 @@ export class APKMirrorProvider extends BaseSourceProvider {
   
   async fetchMetadata(packageName: string): Promise<AppMetadata | null> {
     try {
-      // TODO: Implement actual APKMirror scraping
-      // APKMirror URL pattern: https://www.apkmirror.com/apk/[developer]/[app-name]/
+      console.log(`APKMirror: Searching for ${packageName}...`);
       
-      // Example implementation outline:
-      // 1. Search for the package on APKMirror search page
-      const searchUrl = `${this.baseUrl}/?s=${encodeURIComponent(packageName)}`;
+      // Search for the app
+      const searchUrl = `${this.baseUrl}/?s=${encodeURIComponent(packageName)}&post_type=app_release&searchtype=apk`;
       const searchHtml = await this.fetchHtml(searchUrl);
       
       if (!searchHtml) {
-        console.log(`APKMirror: Could not fetch search results for ${packageName}`);
+        console.log(`APKMirror: Could not fetch search results`);
         return null;
       }
       
-      // 2. Parse search results to find the app page
       const $ = cheerio.load(searchHtml);
       
-      // TODO: Extract app page URL from search results
-      // const appPageUrl = ... extract from search results
+      // Find the first matching app result
+      const firstResult = $('.listWidget .appRow').first();
+      if (firstResult.length === 0) {
+        console.log(`APKMirror: No results found for ${packageName}`);
+        return null;
+      }
       
-      // 3. Fetch app page and extract metadata
-      // const appHtml = await this.fetchHtml(appPageUrl);
+      // Extract app page URL
+      const appLink = firstResult.find('.appRowTitle a').attr('href');
+      if (!appLink) {
+        console.log(`APKMirror: Could not find app link`);
+        return null;
+      }
       
-      // 4. Parse app page for:
-      //    - Display name
-      //    - Icon URL
-      //    - Description
-      //    - Available versions
+      const appPageUrl = appLink.startsWith('http') ? appLink : `${this.baseUrl}${appLink}`;
       
-      // 5. For each version, construct download URL
+      // Fetch app page
+      const appHtml = await this.fetchHtml(appPageUrl);
+      if (!appHtml) {
+        console.log(`APKMirror: Could not fetch app page`);
+        return null;
+      }
       
-      // Placeholder return for now
-      console.log(`APKMirror: Metadata fetching not fully implemented for ${packageName}`);
-      return null;
+      const app$ = cheerio.load(appHtml);
       
-      // Expected return format:
-      // return {
-      //   packageName,
-      //   displayName: 'App Name',
-      //   shortDescription: 'Short description',
-      //   fullDescription: 'Full description',
-      //   iconUrl: 'https://...',
-      //   versions: [
-      //     {
-      //       versionName: '1.0.0',
-      //       versionCode: 100,
-      //       downloadUrl: 'https://www.apkmirror.com/...',
-      //     },
-      //   ],
-      // };
+      // Extract metadata
+      const displayName = app$('h1.post-title').text().trim() || packageName;
+      const iconUrl = app$('.post-thumbnail img').attr('src') || '';
+      const description = app$('.notes').first().text().trim() || 'No description available';
+      
+      // Find latest version
+      const latestVersionLink = app$('.table-cell .downloadButton').first().attr('href');
+      let downloadUrl = '';
+      
+      if (latestVersionLink) {
+        const versionPageUrl = latestVersionLink.startsWith('http') 
+          ? latestVersionLink 
+          : `${this.baseUrl}${latestVersionLink}`;
+        
+        downloadUrl = await this.getDirectDownloadUrl(versionPageUrl);
+      }
+      
+      console.log(`✅ APKMirror: Found ${displayName}`);
+      
+      return {
+        packageName,
+        displayName,
+        shortDescription: description.substring(0, 200),
+        fullDescription: description,
+        iconUrl,
+        versions: [
+          {
+            versionName: '1.0.0', // Would need to parse from page
+            versionCode: 1,
+            downloadUrl,
+          },
+        ],
+      };
     } catch (error) {
       console.error(`APKMirror: Error fetching metadata for ${packageName}:`, error);
       return null;
@@ -79,24 +91,73 @@ export class APKMirrorProvider extends BaseSourceProvider {
   
   async getDownloadUrl(packageName: string, versionCode?: number): Promise<string | null> {
     try {
-      // TODO: Implement download URL retrieval
-      // APKMirror requires multiple steps:
-      // 1. Find the version page
-      // 2. Click through to download page
-      // 3. Get the actual CDN download link
+      console.log(`APKMirror: Getting download URL for ${packageName}...`);
       
-      console.log(`APKMirror: Download URL retrieval not fully implemented for ${packageName}`);
-      return null;
+      // Search for the app
+      const searchUrl = `${this.baseUrl}/?s=${encodeURIComponent(packageName)}&post_type=app_release&searchtype=apk`;
+      const searchHtml = await this.fetchHtml(searchUrl);
       
-      // Example steps:
-      // 1. Navigate to version-specific page
-      // 2. Find "Download APK" button
-      // 3. Follow to download page
-      // 4. Extract final download link
-      // 5. Validate it's a direct APK download URL
+      if (!searchHtml) return null;
+      
+      const $ = cheerio.load(searchHtml);
+      const firstResult = $('.listWidget .appRow').first();
+      
+      if (firstResult.length === 0) return null;
+      
+      const appLink = firstResult.find('.appRowTitle a').attr('href');
+      if (!appLink) return null;
+      
+      const appPageUrl = appLink.startsWith('http') ? appLink : `${this.baseUrl}${appLink}`;
+      const appHtml = await this.fetchHtml(appPageUrl);
+      
+      if (!appHtml) return null;
+      
+      const app$ = cheerio.load(appHtml);
+      const latestVersionLink = app$('.table-cell .downloadButton').first().attr('href');
+      
+      if (!latestVersionLink) {
+        console.log(`APKMirror: No download button found`);
+        return null;
+      }
+      
+      const versionPageUrl = latestVersionLink.startsWith('http') 
+        ? latestVersionLink 
+        : `${this.baseUrl}${latestVersionLink}`;
+      
+      return await this.getDirectDownloadUrl(versionPageUrl);
     } catch (error) {
       console.error(`APKMirror: Error getting download URL for ${packageName}:`, error);
       return null;
+    }
+  }
+  
+  /**
+   * Gets the direct download URL from an APKMirror download page
+   */
+  private async getDirectDownloadUrl(downloadPageUrl: string): Promise<string> {
+    try {
+      const html = await this.fetchHtml(downloadPageUrl);
+      if (!html) return '';
+      
+      const $ = cheerio.load(html);
+      
+      // APKMirror has a download button that leads to the actual download
+      const downloadLink = $('a.downloadButton').attr('href');
+      
+      if (downloadLink) {
+        const fullUrl = downloadLink.startsWith('http') 
+          ? downloadLink 
+          : `${this.baseUrl}${downloadLink}`;
+        
+        console.log(`✅ APKMirror: Found download URL`);
+        return fullUrl;
+      }
+      
+      console.log(`APKMirror: Could not find direct download link`);
+      return '';
+    } catch (error) {
+      console.error(`APKMirror: Error getting direct download URL:`, error);
+      return '';
     }
   }
 }

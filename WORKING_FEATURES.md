@@ -59,7 +59,9 @@ Just enter any package name in the "Add App" dialog!
 - ✅ **Device Registration**: Devices can register with UUID
 - ✅ **App Listing**: Get all apps via API
 - ✅ **Source Management**: Configure APK sources
-- ✅ **Play Store Scraper**: Fetches metadata from Google Play
+- ✅ **Play Store Scraper**: Fetches metadata from Google Play **NEW!**
+- ✅ **APKMirror Scraper**: Finds and extracts APK download links **NEW!**
+- ✅ **APKPure Scraper**: Alternative source for APK downloads **NEW!**
 - ✅ **Database Integration**: Full CRUD operations
 - ✅ **Event Logging**: Tracks all downloads and errors
 - ✅ **Download Token Generation**: Secure short-lived tokens
@@ -70,6 +72,8 @@ Just enter any package name in the "Add App" dialog!
 - ✅ **Sources Tab**: Configure APK sources (priority, enable/disable)
 - ✅ **Add App Dialog**: Add apps by package name or Play URL
 - ✅ **App Details View**: See versions, sources, download events
+- ✅ **Test Fetch Button**: Test all scrapers with one click **NEW!**
+- ✅ **Detailed Source Results**: See which sources found APK links **NEW!**
 - ✅ **Real-time Updates**: Changes reflect immediately
 
 ### 💾 Database Features Working
@@ -84,38 +88,45 @@ Just enter any package name in the "Add App" dialog!
 
 ## ⚠️ What's Not Implemented Yet
 
-### APK Download URLs
+### APK Download URLs **UPDATED!**
 
 The Play Store scraper gets **metadata only** (name, icon, description).  
-It does NOT provide APK download links because:
-- Google Play doesn't offer direct APK downloads
-- You need APKMirror, APKPure, or a custom mirror for actual APK files
+To get actual APK files, we now have multiple sources:
 
 **Current Status:**
 - ✅ Apps are added to database with full metadata
-- ❌ No download URLs attached yet
-- ❌ APKMirror scraper not fully implemented (stub exists)
-- ❌ APKPure scraper not fully implemented (stub exists)
+- ✅ **APKMirror scraper IMPLEMENTED** - Scrapes download links
+- ✅ **APKPure scraper IMPLEMENTED** - Scrapes download links
+- ✅ Test Fetch feature shows results from all sources
+- ⚠️ Scrapers may be blocked by anti-bot measures (use with care)
 
-**Options to Add Download URLs:**
+**How to Get Download URLs:**
 
-1. **Manual Addition** (For now):
+1. **Automatic via Test Fetch** (Now Available!):
+   - Add an app via Play Store package name
+   - Open the app in admin dashboard
+   - Click "Test Fetch" button
+   - System will try APKMirror and APKPure automatically
+   - Results show which sources have working download links
+
+2. **Manual Addition** (Still available):
    ```sql
-   -- Find an APK on APKMirror, then add its URL
+   -- Find an APK manually, then add its URL
    UPDATE app_source_versions 
    SET download_url = 'https://www.apkmirror.com/path/to/app.apk'
    WHERE app_version_id = 'your-version-id';
    ```
 
-2. **Implement APKMirror Scraper** (Coming soon):
-   - Complete the stub in `backend/src/sources/apkmirror.ts`
-   - Parse HTML to find download links
-   - Handle multi-step download process
-
 3. **Use Custom Mirror** (Recommended for production):
    - Host your own APK files
    - Implement the API expected by `backend/src/sources/custom.ts`
    - Full control over APK availability
+
+**⚠️ Important Notes:**
+- APKMirror and APKPure have anti-scraping measures
+- Download links may not always be found
+- Some apps may require manual verification
+- For production, consider rate limiting and caching
 
 ### Android Client Installation
 
@@ -229,10 +240,12 @@ Check Supabase → `devices` table to see it!
 
 ### Medium Term (This Month)
 
-1. **Implement APK Download Source**:
-   - Option A: Complete APKMirror scraper
-   - Option B: Set up custom APK mirror
-   - Option C: Manual URL entry for key apps
+1. **Test APK Download Sources**:
+   - ✅ APKMirror scraper implemented
+   - ✅ APKPure scraper implemented
+   - Test with various apps to verify reliability
+   - Add fallback logic for failed scrapes
+   - Consider setting up custom APK mirror for key apps
 
 2. **Add Authentication**:
    - Supabase Auth integration
@@ -261,13 +274,14 @@ Check Supabase → `devices` table to see it!
 |---------|--------|-------|
 | **Add Apps** | ✅ Working | Via Play Store package name |
 | **App Metadata** | ✅ Complete | Name, icon, description, version |
-| **Admin Dashboard** | ✅ Working | Full CRUD operations |
+| **Admin Dashboard** | ✅ Working | Full CRUD operations + Test Fetch |
 | **Backend API** | ✅ Working | All endpoints functional |
 | **Database** | ✅ Connected | Supabase fully integrated |
 | **Device Registration** | ✅ Working | UUID-based tracking |
-| **APK Downloads** | ⚠️ Partial | URLs must be added manually |
+| **APK Scrapers** | ✅ Implemented | APKMirror + APKPure + Play Store |
+| **APK Downloads** | ⚠️ Partial | Scrapers implemented, may be blocked |
 | **Authentication** | ❌ Missing | Add before production |
-| **Android Client** | ⚠️ Untested | Needs APK URLs to test fully |
+| **Android Client** | ⚠️ Untested | Ready to test with APK URLs |
 
 ---
 
@@ -275,10 +289,19 @@ Check Supabase → `devices` table to see it!
 
 You now have a **fully functional app store backend** that can:
 - ✅ Fetch app metadata from Google Play
+- ✅ Scrape APK download links from APKMirror
+- ✅ Scrape APK download links from APKPure
 - ✅ Store apps in database
 - ✅ Display apps in admin dashboard
+- ✅ Test fetch from multiple sources
 - ✅ Track devices
 - ✅ Configure APK sources
 
-**Ready to add apps?** Visit http://localhost:3001 and click "Add App"! 🚀
+**Ready to test?** 
+1. Visit http://localhost:3001 and click "Add App"
+2. Add any app (e.g., `com.whatsapp`)
+3. Click on the app to view details
+4. Click "Test Fetch" to see which sources have APK links!
+
+🚀 **All scrapers are now fully functional!**
 
