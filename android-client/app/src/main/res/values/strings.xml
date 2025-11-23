@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kosher App Store</string>
+    <string name="apps_title">Apps</string>
+    <string name="device_id_label">Device ID: %1$s</string>
+    <string name="install_button">Install</string>
+    <string name="open_button">Open</string>
+    <string name="installing_button">Installing…</string>
+    <string name="error_loading_apps">Failed to load apps</string>
+    <string name="retry_button">Retry</string>
+    <string name="no_apps_message">No apps available</string>
+    <string name="download_failed">Download failed</string>
+    <string name="install_prompt">Ready to install %1$s</string>
+</resources>
+
