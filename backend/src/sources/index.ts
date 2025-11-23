@@ -3,6 +3,7 @@ import type { AppSource } from '../types/index.js';
 import { APKMirrorProvider } from './apkmirror.js';
 import { APKPureProvider } from './apkpure.js';
 import { CustomMirrorProvider } from './custom.js';
+import { PlayStoreProvider } from './playstore.js';
 
 /**
  * Factory function to create source providers
@@ -20,5 +21,5 @@ export function createSourceProvider(source: AppSource): SourceProvider {
   }
 }
 
-export { APKMirrorProvider, APKPureProvider, CustomMirrorProvider };
+export { APKMirrorProvider, APKPureProvider, CustomMirrorProvider, PlayStoreProvider };
 

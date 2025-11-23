@@ -33,6 +33,9 @@ export const config = {
       'www.apkmirror.com',
       'apkpure.com',
       'www.apkpure.com',
+      'play.google.com',
+      'play.googleapis.com',
+      'lh3.googleusercontent.com',
       'mirror.example.com',
     ],
     downloadTokenExpirySeconds: 300, // 5 minutes

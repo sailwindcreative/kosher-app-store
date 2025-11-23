@@ -116,39 +116,42 @@ export async function adminAppRoutes(fastify: FastifyInstance) {
       });
     }
     
-    // Fetch enabled sources
+    // First, try to fetch metadata from Google Play Store
+    console.log(`Fetching metadata for ${packageName} from Play Store...`);
+    const { PlayStoreProvider } = await import('../../sources/playstore.js');
+    const playStoreProvider = new PlayStoreProvider('https://play.google.com');
+    
+    let appMetadata = await playStoreProvider.fetchMetadata(packageName);
+    
+    if (!appMetadata) {
+      return reply.code(404).send({ 
+        error: `Could not find app '${packageName}' on Google Play Store. Please verify the package name.`,
+      });
+    }
+    
+    // Now try to get download URLs from enabled sources (APKMirror, APKPure, etc.)
     const { data: sources } = await supabase
       .from('app_sources')
       .select('*')
       .eq('enabled', true)
       .order('priority');
     
-    if (!sources || sources.length === 0) {
-      return reply.code(500).send({ error: 'No enabled sources available' });
-    }
-    
-    // Try each source until we get metadata
-    let appMetadata = null;
-    let successfulSource: AppSource | null = null;
-    
-    for (const source of sources) {
-      try {
-        const provider = createSourceProvider(source);
-        appMetadata = await provider.fetchMetadata(packageName);
-        
-        if (appMetadata) {
-          successfulSource = source;
-          break;
+    // Try to enhance with download URLs from other sources
+    if (sources && sources.length > 0) {
+      for (const source of sources) {
+        try {
+          const provider = createSourceProvider(source);
+          const downloadUrl = await provider.getDownloadUrl(packageName);
+          
+          if (downloadUrl && appMetadata.versions[0]) {
+            appMetadata.versions[0].downloadUrl = downloadUrl;
+            console.log(`✅ Found download URL from ${source.name}`);
+            break;
+          }
+        } catch (error) {
+          console.log(`⚠️  Could not get download URL from ${source.name}`);
         }
-      } catch (error) {
-        console.error(`Error fetching from ${source.name}:`, error);
       }
-    }
-    
-    if (!appMetadata || !successfulSource) {
-      return reply.code(404).send({ 
-        error: 'Could not fetch app metadata from any source',
-      });
     }
     
     // Create app record
@@ -173,7 +176,7 @@ export async function adminAppRoutes(fastify: FastifyInstance) {
       return reply.code(500).send({ error: 'Failed to create app' });
     }
     
-    // Create version records and link to sources
+    // Create version records and link to sources (if download URL available)
     for (const version of appMetadata.versions) {
       const { data: newVersion } = await supabase
         .from('app_versions')
@@ -185,13 +188,14 @@ export async function adminAppRoutes(fastify: FastifyInstance) {
         .select()
         .single();
       
-      if (newVersion) {
-        // Link version to source
+      // Only create source version link if we have a download URL
+      if (newVersion && version.downloadUrl && sources && sources.length > 0) {
+        const firstEnabledSource = sources[0];
         await supabase
           .from('app_source_versions')
           .insert({
             app_version_id: newVersion.id,
-            app_source_id: successfulSource.id,
+            app_source_id: firstEnabledSource.id,
             download_url: version.downloadUrl,
             last_checked_at: new Date().toISOString(),
             last_status: 'ok',
