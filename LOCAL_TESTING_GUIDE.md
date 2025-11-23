@@ -55,15 +55,19 @@ curl http://localhost:3000/api/admin/apps
 curl http://localhost:3000/api/admin/sources
 ```
 
-### 4. Test Adding an App (Will Fail - Expected)
+### 4. Test Adding an App ✅ **NOW WORKS!**
 
 1. Open admin dashboard: http://localhost:3001
 2. Click "Add App" button
-3. Try entering: `com.android.chrome`
+3. Enter a package name: `com.android.chrome` or `com.whatsapp`
 4. Click "Add App"
-5. **Expected**: Error because scrapers are not implemented
+5. **Success!** The app will be fetched from Google Play Store with:
+   - App name
+   - Icon
+   - Description
+   - Version info
 
-This is normal! The source providers need implementation (see `backend/src/sources/`).
+**Note:** The Play Store scraper gets metadata only. APK download URLs would come from APKMirror/APKPure (not yet implemented) or can be added manually later.
 
 ## 📊 Database Verification
 
@@ -126,9 +130,27 @@ Or simply close the terminal window.
 
 ## 📝 Test Scenarios
 
-### Scenario 1: Manual App Addition (Via SQL)
+### Scenario 1: Add Apps from Google Play Store ✅ **WORKS NOW!**
 
-Since scrapers aren't implemented, add a test app directly to the database:
+You can now add any app from the Google Play Store using its package name!
+
+**Try these popular apps:**
+```powershell
+# Add apps via API
+$packages = @("com.spotify.music", "com.netflix.mediaclient", "com.instagram.android", "com.twitter.android")
+foreach ($pkg in $packages) {
+    $body = @{package_name = $pkg} | ConvertTo-Json
+    Invoke-RestMethod -Uri http://localhost:3000/api/admin/apps -Method POST -Body $body -ContentType "application/json"
+    Write-Host "✅ Added $pkg"
+    Start-Sleep -Seconds 2
+}
+```
+
+Or use the admin dashboard at http://localhost:3001 and click "Add App"!
+
+### Scenario 1b: Manual App Addition (Via SQL)
+
+If you need to add an app that's not on Play Store:
 
 1. Go to Supabase dashboard: https://supabase.com
 2. Open SQL Editor
