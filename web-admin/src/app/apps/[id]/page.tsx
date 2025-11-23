@@ -183,37 +183,69 @@ export default function AppDetailPage() {
           <div className="mt-6 pt-6 border-t">
             <h3 className="text-sm font-semibold text-gray-900 mb-3">Test Results</h3>
             <div className="space-y-2">
-              {testResults.map((result) => (
-                <div
-                  key={result.source_id}
-                  className={`p-3 rounded-lg text-sm ${
-                    result.status === 'success'
-                      ? 'bg-green-50 border border-green-200'
-                      : 'bg-red-50 border border-red-200'
-                  }`}
-                >
-                  <div className="font-medium">
-                    {result.source_name}
-                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                      result.status === 'success'
-                        ? 'bg-green-200 text-green-900'
-                        : 'bg-red-200 text-red-900'
-                    }`}>
-                      {result.status}
-                    </span>
+              {testResults.map((result: any) => {
+                const getStatusStyle = () => {
+                  switch (result.status) {
+                    case 'success':
+                      return 'bg-green-50 border border-green-200';
+                    case 'warning':
+                      return 'bg-yellow-50 border border-yellow-200';
+                    case 'info':
+                      return 'bg-blue-50 border border-blue-200';
+                    case 'failure':
+                      return 'bg-red-50 border border-red-200';
+                    default:
+                      return 'bg-gray-50 border border-gray-200';
+                  }
+                };
+                
+                const getBadgeStyle = () => {
+                  switch (result.status) {
+                    case 'success':
+                      return 'bg-green-200 text-green-900';
+                    case 'warning':
+                      return 'bg-yellow-200 text-yellow-900';
+                    case 'info':
+                      return 'bg-blue-200 text-blue-900';
+                    case 'failure':
+                      return 'bg-red-200 text-red-900';
+                    default:
+                      return 'bg-gray-200 text-gray-900';
+                  }
+                };
+                
+                return (
+                  <div
+                    key={result.source_id}
+                    className={`p-3 rounded-lg text-sm ${getStatusStyle()}`}
+                  >
+                    <div className="font-medium">
+                      {result.source_name}
+                      <span className={`ml-2 px-2 py-1 rounded text-xs ${getBadgeStyle()}`}>
+                        {result.status}
+                      </span>
+                    </div>
+                    
+                    {result.message && (
+                      <div className="mt-1 text-xs font-medium text-gray-700">
+                        {result.message}
+                      </div>
+                    )}
+                    
+                    {result.url && (
+                      <div className="mt-1 text-xs text-gray-600 break-all">
+                        <span className="font-semibold">URL:</span> {result.url}
+                      </div>
+                    )}
+                    
+                    {result.error && (
+                      <div className="mt-1 text-xs text-gray-700">
+                        {result.error}
+                      </div>
+                    )}
                   </div>
-                  {result.url && (
-                    <div className="mt-1 text-xs text-gray-600 truncate">
-                      URL: {result.url}
-                    </div>
-                  )}
-                  {result.error && (
-                    <div className="mt-1 text-xs text-red-600">
-                      Error: {result.error}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

@@ -224,52 +224,93 @@ export async function adminAppRoutes(fastify: FastifyInstance) {
       return reply.code(404).send({ error: 'App not found' });
     }
     
-    // Get all enabled sources
+    const results = [];
+    const checkedAt = new Date().toISOString();
+    
+    // First, test Play Store (metadata only)
+    console.log(`Testing Play Store for ${app.package_name}...`);
+    try {
+      const { PlayStoreProvider } = await import('../../sources/playstore.js');
+      const playStoreProvider = new PlayStoreProvider('https://play.google.com');
+      const metadata = await playStoreProvider.fetchMetadata(app.package_name);
+      
+      if (metadata) {
+        results.push({
+          source_id: 'play-store',
+          source_name: 'Google Play Store',
+          status: 'success' as const,
+          url: metadata.playUrl || '',
+          message: '✅ Metadata available (name, icon, description)',
+          checked_at: checkedAt,
+        });
+      } else {
+        results.push({
+          source_id: 'play-store',
+          source_name: 'Google Play Store',
+          status: 'failure' as const,
+          error: 'App not found on Play Store',
+          checked_at: checkedAt,
+        });
+      }
+    } catch (error) {
+      results.push({
+        source_id: 'play-store',
+        source_name: 'Google Play Store',
+        status: 'failure' as const,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        checked_at: checkedAt,
+      });
+    }
+    
+    // Test configured APK sources
     const { data: sources } = await supabase
       .from('app_sources')
       .select('*')
-      .eq('enabled', true)
       .order('priority');
     
-    if (!sources) {
-      return reply.code(500).send({ error: 'Failed to fetch sources' });
-    }
-    
-    const results = [];
-    
-    // Test each source
-    for (const source of sources) {
-      const checkedAt = new Date().toISOString();
-      
-      try {
-        const provider = createSourceProvider(source);
-        const metadata = await provider.fetchMetadata(app.package_name);
-        
-        if (metadata && metadata.versions.length > 0) {
-          results.push({
-            source_id: source.id,
-            source_name: source.name,
-            status: 'success' as const,
-            url: metadata.versions[0].downloadUrl,
-            checked_at: checkedAt,
-          });
-        } else {
+    if (sources) {
+      for (const source of sources) {
+        try {
+          const provider = createSourceProvider(source);
+          
+          // Try to get download URL
+          const downloadUrl = await provider.getDownloadUrl(app.package_name);
+          
+          if (downloadUrl) {
+            // Verify the URL is accessible
+            const isValid = await provider.verifyUrl(downloadUrl);
+            
+            results.push({
+              source_id: source.id,
+              source_name: source.name,
+              status: isValid ? 'success' as const : 'warning' as const,
+              url: downloadUrl,
+              message: isValid ? '✅ APK download available' : '⚠️ URL found but not accessible',
+              checked_at: checkedAt,
+            });
+          } else {
+            results.push({
+              source_id: source.id,
+              source_name: source.name,
+              status: 'info' as const,
+              error: source.type === 'custom' 
+                ? '⚠️ Custom mirror not configured'
+                : '⚠️ Scraper not fully implemented - returns placeholder',
+              message: source.type !== 'custom' 
+                ? `${source.name} scraper needs implementation (see backend/src/sources/${source.type}.ts)`
+                : 'Set up your custom mirror server',
+              checked_at: checkedAt,
+            });
+          }
+        } catch (error) {
           results.push({
             source_id: source.id,
             source_name: source.name,
             status: 'failure' as const,
-            error: 'No metadata or versions found',
+            error: error instanceof Error ? error.message : 'Unknown error',
             checked_at: checkedAt,
           });
         }
-      } catch (error) {
-        results.push({
-          source_id: source.id,
-          source_name: source.name,
-          status: 'failure' as const,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          checked_at: checkedAt,
-        });
       }
     }
     
