@@ -1,5 +1,5 @@
 import { BaseSourceProvider } from './base.js';
-import type { AppMetadata, VersionMetadata } from '../types/index.js';
+import type { AppMetadata } from '../types/index.js';
 import * as cheerio from 'cheerio';
 
 /**
@@ -83,7 +83,7 @@ export class APKPureProvider extends BaseSourceProvider {
     }
   }
   
-  async getDownloadUrl(packageName: string, versionCode?: number): Promise<string | null> {
+  async getDownloadUrl(packageName: string): Promise<string | null> {
     try {
       console.log(`APKPure: Getting download URL for ${packageName}...`);
       

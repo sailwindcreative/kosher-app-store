@@ -29,7 +29,6 @@ export abstract class BaseSourceProvider implements SourceProvider {
     try {
       const response = await fetch(url, {
         method: 'HEAD',
-        timeout: 5000,
       });
       return response.ok;
     } catch {
@@ -50,7 +49,6 @@ export abstract class BaseSourceProvider implements SourceProvider {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
-        timeout: 10000,
       });
       
       if (!response.ok) {
@@ -77,7 +75,6 @@ export abstract class BaseSourceProvider implements SourceProvider {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
-        timeout: 10000,
       });
       
       if (!response.ok) {
