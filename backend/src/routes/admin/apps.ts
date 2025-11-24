@@ -85,10 +85,10 @@ export async function adminAppRoutes(fastify: FastifyInstance) {
       display_name: z.string().optional(),
       short_description: z.string().optional(),
       full_description: z.string().optional(),
-      icon_url: z.string().url().optional(),
+      icon_url: z.string().url().or(z.literal('')).optional(),
       current_version_name: z.string().optional(),
       current_version_code: z.number().optional(),
-      play_url: z.string().url().optional(),
+      play_url: z.string().url().or(z.literal('')).optional(),
     });
     
     const updates = updateSchema.parse(request.body);
@@ -113,13 +113,13 @@ export async function adminAppRoutes(fastify: FastifyInstance) {
    */
   fastify.post('/quick', async (request, reply) => {
     const quickAddSchema = z.object({
-      google_play_url: z.string().url().optional(),
-      apkmirror_url: z.string().url().optional(),
-      apkpure_url: z.string().url().optional(),
+      google_play_url: z.string().url().or(z.literal('')).optional(),
+      apkmirror_url: z.string().url().or(z.literal('')).optional(),
+      apkpure_url: z.string().url().or(z.literal('')).optional(),
       package_name: z.string().optional(),
       display_name: z.string().optional(),
       short_description: z.string().optional(),
-      icon_url: z.string().url().optional(),
+      icon_url: z.string().url().or(z.literal('')).optional(),
       use_mock_apk: z.boolean().default(false),
     });
     
@@ -127,7 +127,7 @@ export async function adminAppRoutes(fastify: FastifyInstance) {
     
     // Extract package name from Google Play URL if not provided
     let packageName = input.package_name;
-    if (!packageName && input.google_play_url) {
+    if (!packageName && input.google_play_url && input.google_play_url.trim() !== '') {
       packageName = extractPackageNameFromPlayUrl(input.google_play_url);
     }
     
@@ -159,7 +159,7 @@ export async function adminAppRoutes(fastify: FastifyInstance) {
       iconUrl: input.icon_url || '',
     };
     
-    if (input.google_play_url) {
+    if (input.google_play_url && input.google_play_url.trim() !== '') {
       try {
         const { PlayStoreProvider } = await import('../../sources/playstore.js');
         const playStoreProvider = new PlayStoreProvider('https://play.google.com');
@@ -223,9 +223,9 @@ export async function adminAppRoutes(fastify: FastifyInstance) {
     for (const source of sources) {
       let downloadUrl = '';
       
-      if (source.type === 'apkmirror' && input.apkmirror_url) {
+      if (source.type === 'apkmirror' && input.apkmirror_url && input.apkmirror_url.trim() !== '') {
         downloadUrl = input.apkmirror_url;
-      } else if (source.type === 'apkpure' && input.apkpure_url) {
+      } else if (source.type === 'apkpure' && input.apkpure_url && input.apkpure_url.trim() !== '') {
         downloadUrl = input.apkpure_url;
       } else if (input.use_mock_apk) {
         // Create a mock URL
