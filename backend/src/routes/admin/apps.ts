@@ -75,6 +75,181 @@ export async function adminAppRoutes(fastify: FastifyInstance) {
   });
   
   /**
+   * PATCH /api/admin/apps/:id
+   * Update app metadata
+   */
+  fastify.patch('/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    
+    const updateSchema = z.object({
+      display_name: z.string().optional(),
+      short_description: z.string().optional(),
+      full_description: z.string().optional(),
+      icon_url: z.string().url().optional(),
+      current_version_name: z.string().optional(),
+      current_version_code: z.number().optional(),
+      play_url: z.string().url().optional(),
+    });
+    
+    const updates = updateSchema.parse(request.body);
+    
+    const { data: updatedApp, error } = await supabase
+      .from('apps')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error || !updatedApp) {
+      return reply.code(404).send({ error: 'App not found or update failed' });
+    }
+    
+    return reply.send(updatedApp);
+  });
+  
+  /**
+   * POST /api/admin/apps/quick
+   * Quick add app with manual URLs and optional mock APK
+   */
+  fastify.post('/quick', async (request, reply) => {
+    const quickAddSchema = z.object({
+      google_play_url: z.string().url().optional(),
+      apkmirror_url: z.string().url().optional(),
+      apkpure_url: z.string().url().optional(),
+      package_name: z.string().optional(),
+      display_name: z.string().optional(),
+      short_description: z.string().optional(),
+      icon_url: z.string().url().optional(),
+      use_mock_apk: z.boolean().default(false),
+    });
+    
+    const input = quickAddSchema.parse(request.body);
+    
+    // Extract package name from Google Play URL if not provided
+    let packageName = input.package_name;
+    if (!packageName && input.google_play_url) {
+      packageName = extractPackageNameFromPlayUrl(input.google_play_url);
+    }
+    
+    if (!packageName) {
+      return reply.code(400).send({ 
+        error: 'Package name or Google Play URL is required',
+      });
+    }
+    
+    // Check if app already exists
+    const { data: existing } = await supabase
+      .from('apps')
+      .select('id')
+      .eq('package_name', packageName)
+      .single();
+    
+    if (existing) {
+      return reply.code(409).send({ 
+        error: 'App already exists',
+        app_id: existing.id,
+      });
+    }
+    
+    // Try to fetch metadata from Google Play if URL provided
+    let metadata: any = {
+      displayName: input.display_name || packageName,
+      shortDescription: input.short_description || 'No description provided',
+      fullDescription: input.short_description || 'No description provided',
+      iconUrl: input.icon_url || '',
+    };
+    
+    if (input.google_play_url) {
+      try {
+        const { PlayStoreProvider } = await import('../../sources/playstore.js');
+        const playStoreProvider = new PlayStoreProvider('https://play.google.com');
+        const fetchedMetadata = await playStoreProvider.fetchMetadata(packageName);
+        
+        if (fetchedMetadata) {
+          metadata = fetchedMetadata;
+        }
+      } catch (error) {
+        console.log('Could not fetch Play Store metadata, using manual data');
+      }
+    }
+    
+    // Create app record
+    const { data: newApp, error: appError } = await supabase
+      .from('apps')
+      .insert({
+        package_name: packageName,
+        play_url: input.google_play_url,
+        display_name: metadata.displayName,
+        short_description: metadata.shortDescription,
+        full_description: metadata.fullDescription,
+        icon_url: metadata.iconUrl,
+        current_version_name: '1.0.0',
+        current_version_code: 1,
+      })
+      .select()
+      .single();
+    
+    if (appError || !newApp) {
+      console.error('Error creating app:', appError);
+      return reply.code(500).send({ error: 'Failed to create app' });
+    }
+    
+    // Create version record
+    const { data: newVersion } = await supabase
+      .from('app_versions')
+      .insert({
+        app_id: newApp.id,
+        version_name: '1.0.0',
+        version_code: 1,
+      })
+      .select()
+      .single();
+    
+    if (!newVersion) {
+      return reply.send(newApp);
+    }
+    
+    // Get sources
+    const { data: sources } = await supabase
+      .from('app_sources')
+      .select('*')
+      .order('priority');
+    
+    if (!sources) {
+      return reply.send(newApp);
+    }
+    
+    // Link to sources with provided URLs or mock URLs
+    for (const source of sources) {
+      let downloadUrl = '';
+      
+      if (source.type === 'apkmirror' && input.apkmirror_url) {
+        downloadUrl = input.apkmirror_url;
+      } else if (source.type === 'apkpure' && input.apkpure_url) {
+        downloadUrl = input.apkpure_url;
+      } else if (input.use_mock_apk) {
+        // Create a mock URL
+        downloadUrl = `https://mock-cdn.example.com/apks/${packageName}-v1.0.0.apk`;
+      }
+      
+      if (downloadUrl) {
+        await supabase
+          .from('app_source_versions')
+          .insert({
+            app_version_id: newVersion.id,
+            app_source_id: source.id,
+            download_url: downloadUrl,
+          });
+      }
+    }
+    
+    return reply.send({
+      ...newApp,
+      message: input.use_mock_apk ? 'App added with mock APK URL' : 'App added successfully',
+    });
+  });
+  
+  /**
    * POST /api/admin/apps
    * Add a new app by scraping metadata from sources
    */

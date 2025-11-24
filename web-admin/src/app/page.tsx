@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { appsApi, type App } from '@/lib/api';
-import AddAppModal from '@/components/AddAppModal';
+import QuickAddAppModal from '@/components/QuickAddAppModal';
 
 export default function AppsPage() {
   const [apps, setApps] = useState<App[]>([]);
@@ -126,7 +126,7 @@ export default function AppsPage() {
         </div>
       )}
       
-      <AddAppModal
+      <QuickAddAppModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={loadApps}

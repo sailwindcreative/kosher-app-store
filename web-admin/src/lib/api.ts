@@ -38,6 +38,18 @@ export const appsApi = {
       body: JSON.stringify(data),
     }),
   
+  quickAdd: (data: QuickAddData) =>
+    fetchApi<App>('/api/admin/apps/quick', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: (id: string, data: UpdateAppData) =>
+    fetchApi<App>(`/api/admin/apps/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  
   testFetch: (id: string) =>
     fetchApi<TestFetchResponse>(`/api/admin/apps/${id}/test-fetch`, {
       method: 'POST',
@@ -126,5 +138,26 @@ export interface TestFetchResult {
 
 export interface TestFetchResponse {
   results: TestFetchResult[];
+}
+
+export interface QuickAddData {
+  google_play_url?: string;
+  apkmirror_url?: string;
+  apkpure_url?: string;
+  package_name?: string;
+  display_name?: string;
+  short_description?: string;
+  icon_url?: string;
+  use_mock_apk?: boolean;
+}
+
+export interface UpdateAppData {
+  display_name?: string;
+  short_description?: string;
+  full_description?: string;
+  icon_url?: string;
+  current_version_name?: string;
+  current_version_code?: number;
+  play_url?: string;
 }
 

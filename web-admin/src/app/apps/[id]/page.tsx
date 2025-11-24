@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { appsApi, type AppDetail, type TestFetchResult } from '@/lib/api';
+import EditMetadataModal from '@/components/EditMetadataModal';
 
 export default function AppDetailPage() {
   const params = useParams();
@@ -14,21 +15,22 @@ export default function AppDetailPage() {
   const [error, setError] = useState('');
   const [testResults, setTestResults] = useState<TestFetchResult[] | null>(null);
   const [testing, setTesting] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  
+  const loadApp = async () => {
+    try {
+      setLoading(true);
+      const data = await appsApi.get(appId);
+      setApp(data);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load app');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   useEffect(() => {
-    const loadApp = async () => {
-      try {
-        setLoading(true);
-        const data = await appsApi.get(appId);
-        setApp(data);
-        setError('');
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load app');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     loadApp();
   }, [appId]);
   
@@ -62,12 +64,20 @@ export default function AppDetailPage() {
   
   return (
     <div>
-      <button
-        onClick={() => router.back()}
-        className="mb-4 text-blue-600 hover:text-blue-800"
-      >
-        ← Back to Apps
-      </button>
+      <div className="flex justify-between items-center mb-4">
+        <button
+          onClick={() => router.back()}
+          className="text-blue-600 hover:text-blue-800"
+        >
+          ← Back to Apps
+        </button>
+        <button
+          onClick={() => setIsEditModalOpen(true)}
+          className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+        >
+          Edit Metadata
+        </button>
+      </div>
       
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <div className="flex items-start space-x-4">
@@ -288,6 +298,15 @@ export default function AppDetailPage() {
           <p className="text-gray-500 text-sm">No download events yet</p>
         )}
       </div>
+      
+      {app && (
+        <EditMetadataModal
+          app={app}
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={loadApp}
+        />
+      )}
     </div>
   );
 }

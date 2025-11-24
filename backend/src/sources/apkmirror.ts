@@ -92,12 +92,20 @@ export class APKMirrorProvider extends BaseSourceProvider {
   async getDownloadUrl(packageName: string): Promise<string | null> {
     try {
       console.log(`APKMirror: Getting download URL for ${packageName}...`);
+      console.log(`APKMirror: Base URL is ${this.baseUrl}`);
       
       // Search for the app
       const searchUrl = `${this.baseUrl}/?s=${encodeURIComponent(packageName)}&post_type=app_release&searchtype=apk`;
+      console.log(`APKMirror: Search URL: ${searchUrl}`);
+      
       const searchHtml = await this.fetchHtml(searchUrl);
       
-      if (!searchHtml) return null;
+      if (!searchHtml) {
+        console.log(`APKMirror: fetchHtml returned null for search URL`);
+        return null;
+      }
+      
+      console.log(`APKMirror: Got search HTML, length: ${searchHtml.length}`);
       
       const $ = cheerio.load(searchHtml);
       const firstResult = $('.listWidget .appRow').first();
